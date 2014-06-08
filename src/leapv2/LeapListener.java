@@ -41,7 +41,7 @@ public class LeapListener extends Listener {
                 }
             }
         }
-        doneList.set(bones.size()>0);
+        doneList.set(!bones.isEmpty());
     }
     
     public List<Bone> getBones(){ 
