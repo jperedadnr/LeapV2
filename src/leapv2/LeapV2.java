@@ -3,9 +3,10 @@ package leapv2;
 import com.leapmotion.leap.Bone;
 import com.leapmotion.leap.Controller;
 import com.leapmotion.leap.Vector;
+import java.util.List;
+import java.util.stream.Collectors;
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.collections.ObservableList;
 import javafx.geometry.Point3D;
 import javafx.scene.Camera;
 import javafx.scene.Group;
@@ -93,7 +94,6 @@ public class LeapV2 extends Application {
         Group root3D=new Group();
         root3D.getChildren().addAll(camera, root);
         SubScene subScene = new SubScene(root3D, 800, 600,true,SceneAntialiasing.BALANCED);
-        subScene.setScaleX(1.3); subScene.setScaleY(1.3); subScene.setScaleZ(1.3); 
         subScene.setCamera(camera);
 
         pane.getChildren().addAll(subScene);
@@ -103,34 +103,43 @@ public class LeapV2 extends Application {
         materialFinger.setDiffuseColor(Color.GOLDENROD);
         materialFinger.setSpecularColor(Color.rgb(50, 50, 50));
 
-        listener.doneProperty().addListener((ov,b,b1)->{
+        listener.doneListProperty().addListener((ov,b,b1)->{
             if(b1){
+                
+                // First, get a fresh copy of the bones collection
+                List<Bone> bones=listener.getBones();
+                
                 Platform.runLater(()->{
+                    // Now, on the JavaFX thread
                     if(root.getChildren().size()>minRoot){
+                        // clean old bones
                         root.getChildren().remove(minRoot,root.getChildren().size()-1);
                     }
                     
-                    final ObservableList<? extends Bone> list =listener.getTipBones();
-                    for (int i =0; i < list.size(); i++) {
-                        final Bone bone=list.get(i);
-                        if(bone.isValid()){
+                    // Iterate over the list adding the bones to the scene
+                    // If the collection changes there won't be any concurrent exception
+                    // as we are iterating over its copy.
+                     bones.stream()
+                        .filter((bone) -> (bone.isValid() && bone.length()>0))
+                        .forEach((bone) -> {
                             final Vector p=bone.center();
-                            final Vector v=bone.direction();
-
+                            // create bone as a cylinder and locate it at its center position
                             Cylinder c=new Cylinder(bone.width()/2,bone.length());
                             c.setMaterial(materialFinger);
                             c.setTranslateX(200+p.getX());
                             c.setTranslateY(-p.getY());
                             c.setTranslateZ(-p.getZ());
-                            if(i<list.size()){
-                                Vector cross = (new Vector(v.getX(),-v.getY(),-v.getZ())).cross(new Vector(0,-1,0));
-                                double ang=(new Vector(v.getX(),-v.getY(),-v.getZ())).angleTo(new Vector(0,-1,0));
-                                c.setRotationAxis(new Point3D(cross.getX(),-cross.getY(),cross.getZ()));
-                                c.setRotate(-Math.toDegrees(ang));
-                            }    
+                            
+                            // rotate the cylinder towards its direction
+                            final Vector v=bone.direction();
+                            Vector cross = (new Vector(v.getX(),-v.getY(),-v.getZ())).cross(new Vector(0,-1,0));
+                            double ang=(new Vector(v.getX(),-v.getY(),-v.getZ())).angleTo(new Vector(0,-1,0));
+                            c.setRotationAxis(new Point3D(cross.getX(),-cross.getY(),cross.getZ()));
+                            c.setRotate(-Math.toDegrees(ang));
+                            
+                            // add bone to scene
                             root.getChildren().add(c);
-                        }
-                    }        
+                        });        
                 });
             }
         });
