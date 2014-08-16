@@ -56,25 +56,36 @@ public class LeapListener extends Listener {
                         arms.add(h.arm());
                         
                         FingerList fingers = h.fingers();
+                        Finger index=null, middle=null, ring=null, pinky=null;
+                        for(Finger f: fingers){
+                            if(f.isFinger() && f.isValid()){
+                                switch(f.type()){
+                                    case TYPE_INDEX: index=f; break;
+                                    case TYPE_MIDDLE: middle=f; break;
+                                    case TYPE_RING: ring=f; break;
+                                    case TYPE_PINKY: pinky=f; break;
+                                }
+                            }
+                        }
                         // joints
-                        if(fingers.get(1).isFinger() && fingers.get(2).isFinger()){
-                            Pair p=new Pair(fingers.get(1).bone(Bone.Type.TYPE_METACARPAL).nextJoint(),
-                                            fingers.get(2).bone(Bone.Type.TYPE_METACARPAL).nextJoint());
+                        if(index!=null && middle!=null){
+                            Pair p=new Pair(index.bone(Bone.Type.TYPE_METACARPAL).nextJoint(),
+                                            middle.bone(Bone.Type.TYPE_METACARPAL).nextJoint());
                             joints.add(p);
                         }
-                        if(fingers.get(2).isFinger() && fingers.get(3).isFinger()){
-                            Pair p=new Pair(fingers.get(2).bone(Bone.Type.TYPE_METACARPAL).nextJoint(),
-                                            fingers.get(3).bone(Bone.Type.TYPE_METACARPAL).nextJoint());
+                        if(middle!=null && ring!=null){
+                            Pair p=new Pair(middle.bone(Bone.Type.TYPE_METACARPAL).nextJoint(),
+                                            ring.bone(Bone.Type.TYPE_METACARPAL).nextJoint());
                             joints.add(p);
                         }
-                        if(fingers.get(3).isFinger() && fingers.get(4).isFinger()){
-                            Pair p=new Pair(fingers.get(3).bone(Bone.Type.TYPE_METACARPAL).nextJoint(),
-                                            fingers.get(4).bone(Bone.Type.TYPE_METACARPAL).nextJoint());
+                        if(ring!=null && pinky!=null){
+                            Pair p=new Pair(ring.bone(Bone.Type.TYPE_METACARPAL).nextJoint(),
+                                            pinky.bone(Bone.Type.TYPE_METACARPAL).nextJoint());
                             joints.add(p);
                         }
-                        if(fingers.get(1).isFinger() && fingers.get(4).isFinger()){
-                            Pair p=new Pair(fingers.get(1).bone(Bone.Type.TYPE_METACARPAL).prevJoint(),
-                                            fingers.get(4).bone(Bone.Type.TYPE_METACARPAL).prevJoint());
+                        if(index!=null && pinky!=null){
+                            Pair p=new Pair(index.bone(Bone.Type.TYPE_METACARPAL).prevJoint(),
+                                            pinky.bone(Bone.Type.TYPE_METACARPAL).prevJoint());
                             joints.add(p);
                         }        
                     }
