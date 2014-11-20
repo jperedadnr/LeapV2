@@ -7,6 +7,9 @@ import com.leapmotion.leap.Vector;
 import java.util.List;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.geometry.Bounds;
 import javafx.geometry.Point3D;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
@@ -14,9 +17,11 @@ import javafx.scene.PointLight;
 import javafx.scene.Scene;
 import javafx.scene.SceneAntialiasing;
 import javafx.scene.SubScene;
+import javafx.scene.image.Image;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Material;
 import javafx.scene.paint.PhongMaterial;
 import javafx.scene.shape.CullFace;
 import javafx.scene.shape.Cylinder;
@@ -43,6 +48,9 @@ public class LeapV2 extends Application {
     private Shape3D[] meshView=null;
     private final Group root=new Group();
     private double dragStartX, dragStartY, dragStartRotateX, dragStartRotateY;
+    private Bounds sphereBounds;
+    private PhongMaterial material, sphereMaterial;
+    private BooleanProperty touch = new SimpleBooleanProperty(false);
     
     @Override
     public void start(Stage primaryStage) {
@@ -53,14 +61,19 @@ public class LeapV2 extends Application {
         
         Scene scene = new Scene(pane, 800, 600, Color.BEIGE);
         final PerspectiveCamera camera = new PerspectiveCamera();
-        camera.setFieldOfView(90);
+        camera.setFieldOfView(60);
         camera.getTransforms().addAll(cameraXRotate,cameraYRotate,cameraPosition);
 
-        PhongMaterial material = new PhongMaterial();
+        material = new PhongMaterial();
         material.setDiffuseColor(Color.GAINSBORO);
         material.setSpecularColor(Color.rgb(30, 30, 30));
         
-        meshView = new Shape3D[2];
+        sphereMaterial = new PhongMaterial();
+        sphereMaterial.setDiffuseColor(Color.GAINSBORO);
+        sphereMaterial.setSpecularColor(Color.rgb(30, 30, 30));
+        sphereMaterial.setSelfIlluminationMap(new Image(getClass().getResource("red.png").toExternalForm()));
+                                
+        meshView = new Shape3D[3];
         meshView[0]=new MeshView(buildTriangleMesh(20, 20, 30,true));
         meshView[1]=new MeshView(buildTriangleMesh(20, 20, 30,false));
         for (int i=0; i<2; i++) {
@@ -69,12 +82,22 @@ public class LeapV2 extends Application {
             meshView[i].setTranslateY(i==0?-300:0);
             meshView[i].setTranslateZ(i==0?0:-300);
             meshView[i].setDrawMode(DrawMode.LINE);
-            meshView[i].setCullFace(CullFace.BACK);
+            meshView[i].setCullFace(CullFace.NONE);
         }
+        meshView[2]=new Sphere(60);
+        meshView[2].setMaterial(material);
+        meshView[2].setDrawMode(DrawMode.FILL);
+        meshView[2].setCullFace(CullFace.BACK);
+        meshView[2].setTranslateX(160);
+        meshView[2].setTranslateY(-60);
+        meshView[2].setTranslateZ(-160);
+        sphereBounds = meshView[2].localToScene(meshView[2].getBoundsInLocal());
+        System.out.println("s0: "+meshView[2].getBoundsInLocal());
+        System.out.println("s: "+sphereBounds);
         final Group parent = new Group(meshView);
         root.getChildren().addAll(parent);
         final PointLight pointLight = new PointLight(Color.ANTIQUEWHITE);
-        pointLight.setTranslateX(800);
+        pointLight.setTranslateX(0);
         pointLight.setTranslateY(-800);
         pointLight.setTranslateZ(-600);
         Cylinder axisX=new Cylinder(5,700);
@@ -114,6 +137,7 @@ public class LeapV2 extends Application {
                 List<Bone> bones=listener.getBones();
                 List<Arm> arms=listener.getArms();
                 List<Pair> joints=listener.getJoints();
+                touch.set(false);
                 
                 Platform.runLater(()->{
                     // Now, on the JavaFX thread
@@ -121,7 +145,6 @@ public class LeapV2 extends Application {
                         // clean old bones
                         root.getChildren().remove(minRoot,root.getChildren().size()-1);
                     }
-                    
                     // Iterate over the list adding the bones to the scene
                     // If the collection changes there won't be any concurrent exception
                     // as we are iterating over its copy.
@@ -169,8 +192,20 @@ public class LeapV2 extends Application {
                             // add bone to scene
                             root.getChildren().add(s2);
                             
+                            // intersection
+                            
+                            if(sphereBounds.intersects(s.localToScene(s.getBoundsInLocal())) ||
+                               sphereBounds.intersects(s.localToScene(s2.getBoundsInLocal()))){
+                                touch.set(true);
+                            }
+                            
                         });
-                     
+                    if(touch.get()){
+                        meshView[2].setMaterial(sphereMaterial);
+                    } else if(((PhongMaterial)meshView[2].getMaterial()).getSelfIlluminationMap()!=null){
+                        meshView[2].setMaterial(material);
+                    }
+                    
                     arms.stream()
                         .filter(arm->arm.isValid())
                         .forEach(arm->{
@@ -210,7 +245,6 @@ public class LeapV2 extends Application {
                                         0, 0, 0, 
                                         new Point3D(cross.getX(),-cross.getY(),cross.getZ()))
                                     );
-                            
                                                         
                             // add joint to scene
                             root.getChildren().add(c);
@@ -233,7 +267,7 @@ public class LeapV2 extends Application {
             }
         });
         
-        primaryStage.setTitle("Skeletal Tracking with Leap Motion v2 and JavaFX");
+        primaryStage.setTitle("Skeletal Tracking with Leap Motion v2 and JavaFX 3D");
         primaryStage.setScene(scene);
         primaryStage.show();
     }

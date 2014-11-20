@@ -41,11 +41,10 @@ public class LeapListener extends Listener {
                 for(Finger finger : frame.fingers()){
                     if(finger.isValid()){
                         for(Bone.Type b : Bone.Type.values()) {
-                            Bone bone = finger.bone(b);
                             if((!finger.type().equals(Finger.Type.TYPE_RING) && 
                                 !finger.type().equals(Finger.Type.TYPE_MIDDLE)) || 
                                 !b.equals(Bone.Type.TYPE_METACARPAL)){
-                                bones.add(bone);
+                                bones.add(finger.bone(b));
                             }
                         }
                     }
